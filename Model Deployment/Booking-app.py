@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
 
 st.write("""
 # Booking Prediction App
@@ -12,9 +12,7 @@ This app predicts the **Booking status for a customer**!
 Data obtained from  [project repo](https://github.com/Mohammed-Mostafa-Hasan/BR-Airways/blob/main/Data%20preparation%20for%20Model/data/customer_booking.csv)
 
 """)
-Booking_df = pd.read_csv('customer_booking.csv',encoding = 'latin-1')
-
-options = pd.unique([country for country in Booking_df['booking_origin']])
+Booking_df = pd.read_csv('customer_booking.csv',encoding = 'ISO-8859-1')
 
 
 
@@ -27,28 +25,24 @@ if uploaded_file is not None:
     input_df = pd.read_csv(uploaded_file)
 else:
     def user_input_features():
-        # Text input for search
-        search_text = st.sidebar.text_input("**Search for a country**")
-        # Filter options based on search text
-        filtered_options = [option for option in options if search_text.lower() in option.lower()]
-        # Create a selectbox with filtered options
-        num_passengers = st.sidebar.slider('num_passengers', 1,9,3)
+
+        Booking_origin = st.sidebar.selectbox("Select a country", pd.unique(Booking_df['booking_origin']))
+
+        rout_path = st.sidebar.selectbox('Rout',pd.unique(Booking_df['route']))
 
         sales_channel = st.sidebar.selectbox('sales_channel',('Internet','Mobile'))
 
         trip_type = st.sidebar.selectbox('trip_type',('RoundTrip','CircleTrip','OneWay'))
 
+        flight_day = st.sidebar.selectbox('flight_day',('Sat', 'Wed', 'Thu', 'Mon', 'Sun', 'Tue', 'Fri'))
+       
         purchase_lead  = st.sidebar.number_input('purchase_lead', 0,867,80)
 
         length_of_stay = st.sidebar.number_input('length_of_stay', 0,778,23)
 
         flight_hour = st.sidebar.slider('flight_hour',0,23,7)
 
-        flight_day = st.sidebar.selectbox('flight_day',('Sat', 'Wed', 'Thu', 'Mon', 'Sun', 'Tue', 'Fri'))
-
-        rout_path = st.sidebar.selectbox('Rout',('PERPNH','PENXIY'))
-
-        Booking_origin = st.sidebar.selectbox("Select a country", ('New Zealand','India'))
+        num_passengers = st.sidebar.slider('num_passengers', 1,9,3)
 
         extra_baggage = st.sidebar.selectbox('wants_extra_baggage', (0,1))
 
@@ -70,14 +64,13 @@ else:
                 'route': rout_path,
                 'booking_origin': Booking_origin,
                 'wants_extra_baggage': extra_baggage,
+                'wants_preferred_seat': preferred_seat,
                 'wants_in_flight_meals': flight_meals,
                 'flight_duration': flight_duration,
-                'wants_preferred_seat': preferred_seat,
                 }
         features = pd.DataFrame(data, index=[0])
         return features
-    input_df = user_input_features()
-
+input_df = user_input_features()
 # Combines user input features with entire penguins dataset
 # This will be useful for the encoding phase
 Booking_df = Booking_df.drop(columns=['booking_complete'])
@@ -85,12 +78,14 @@ df = pd.concat([input_df,Booking_df],axis=0)
 
 # Encoding of ordinal features
 # https://www.kaggle.com/pratik1120/penguin-dataset-eda-classification-and-clustering
-encode = ['sales_channel','trip_type','flight_day','route','booking_origin']
-for col in encode:
-    dummy = pd.get_dummies(df[col])
-    df = pd.concat([df,dummy], axis=1)
-    del df[col]
-df = df[:1] # Selects only the first row (the user input data)
+# encode = ['sales_channel','trip_type','flight_day','route','booking_origin']
+# for col in encode:
+#     dummy = pd.get_dummies(df[col])
+#     df = pd.concat([df,dummy], axis=1)
+#     del df[col]
+le = LabelEncoder()
+df_le = df.apply(le.fit_transform)
+df = df_le[:1] # Selects only the first row (the user input data)
 
 # Displays the user input features
 st.subheader('User Input features')
